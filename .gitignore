@@ -1,9 +1,5 @@
 # .gitignore
 
-bin/boostbook_catalog.xml
-bin/config.log
-bin/project-cache.jam
-
 # Ignore vim swap files.
 *.swp
 
@@ -106,3 +102,8 @@ compile_commands.json
 .clangd
 packages
 pkg_out
+
+
+# Ignore script libraries
+node_modules
+package-lock.json
