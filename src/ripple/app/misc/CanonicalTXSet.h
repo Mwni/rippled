@@ -41,8 +41,13 @@ private:
     class Key
     {
     public:
+        Key(std::uint32_t const& bucket, uint256 const& account, SeqProxy seqProx, uint256 const& id)
+            : bucket_(bucket), account_(account), seqProxy_(seqProx), txId_(id)
+        {
+        }
+
         Key(uint256 const& account, SeqProxy seqProx, uint256 const& id)
-            : account_(account), txId_(id), seqProxy_(seqProx)
+            : bucket_(0), account_(account), seqProxy_(seqProx), txId_(id)
         {
         }
 
@@ -91,10 +96,17 @@ private:
             return txId_;
         }
 
+        Key const
+        getCopyWithBucketIncreased() const
+        {
+            return Key(bucket_ + 1, account_, seqProxy_, txId_);
+        }
+
     private:
+        std::uint32_t bucket_;
         uint256 account_;
-        uint256 txId_;
         SeqProxy seqProxy_;
+        uint256 txId_;
     };
 
     friend bool
@@ -108,8 +120,18 @@ public:
     using const_iterator =
         std::map<Key, std::shared_ptr<STTx const>>::const_iterator;
 
+    enum Mode
+	{
+		BATCHED,
+		STRIPED
+	};
+
 public:
-    explicit CanonicalTXSet(LedgerHash const& saltHash) : salt_(saltHash)
+    explicit CanonicalTXSet(LedgerHash const& saltHash) : salt_(saltHash), mode_(Mode::BATCHED)
+    {
+    }
+
+    explicit CanonicalTXSet(LedgerHash const& saltHash, Mode mode) : salt_(saltHash), mode_(mode)
     {
     }
 
@@ -131,6 +153,7 @@ public:
     {
         salt_ = salt;
         map_.clear();
+        hints_.clear();
     }
 
     const_iterator
@@ -169,10 +192,25 @@ public:
     }
 
 private:
+    void
+    insertBatched(std::shared_ptr<STTx const> const& txn);
+
+	void
+    insertStriped(std::shared_ptr<STTx const> const& txn);
+
+    std::shared_ptr<STTx const>
+    popAcctTransactionBatched(std::shared_ptr<STTx const> const& tx);
+
+	std::shared_ptr<STTx const>
+    popAcctTransactionStriped(std::shared_ptr<STTx const> const& tx);
+
+
     std::map<Key, std::shared_ptr<STTx const>> map_;
+    std::map<uint256, std::map<Key, const_iterator>> hints_;
 
     // Used to salt the accounts so people can't mine for low account numbers
     uint256 salt_;
+    Mode mode_;
 };
 
 }  // namespace ripple
